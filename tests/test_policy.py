@@ -9,7 +9,8 @@ def test_password_too_short():
 def test_password_too_simple():
     policy = PasswordPolicy(min_length=12)
     with pytest.raises(WeakPasswordError, match="too simple"):
-        policy.validate("onlyletters")
+        # This is 17 characters (passes length) but only letters (fails simplicity)
+        policy.validate("thisislongbutsimple")
 
 def test_strong_passphrase():
     policy = PasswordPolicy(min_length=12)

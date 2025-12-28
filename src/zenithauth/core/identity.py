@@ -11,6 +11,7 @@ class UserBase(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     
     model_config = ConfigDict(from_attributes=True)
+    mfa_enabled: bool = False
 
 class UserCreate(UserBase):
     """Schema for user registration."""
@@ -24,3 +25,4 @@ class UserRead(UserBase):
 class UserInDB(UserRead):
     """Internal schema that includes the sensitive hash."""
     hashed_password: str
+    mfa_secret: Optional[str] = None
