@@ -20,3 +20,4 @@ RUN uv pip install --system .[dev]
 COPY . .
 
 CMD ["pytest"]
+
