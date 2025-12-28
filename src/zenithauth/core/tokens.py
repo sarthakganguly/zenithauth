@@ -1,23 +1,18 @@
 from datetime import datetime, timedelta, timezone
 import uuid
-from typing import List, Optional, Dict
+from typing import List, Dict, Any
 from jose import jwt, JWTError
-from pydantic import BaseModel
+from zenithauth.config import ZenithSettings  # Import central settings
 from zenithauth.core.exceptions import TokenExpiredError, ZenithAuthError
 
-class TokenSettings(BaseModel):
-    secret_key: str
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 15
-    refresh_token_expire_days: int = 7
-
-class TokenPair(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
+class TokenPair:
+    def __init__(self, access_token: str, refresh_token: str):
+        self.access_token = access_token
+        self.refresh_token = refresh_token
+        self.token_type = "bearer"
 
 class TokenManager:
-    def __init__(self, settings: TokenSettings):
+    def __init__(self, settings: ZenithSettings):
         self.settings = settings
 
     def create_token(self, subject: str, expires_delta: timedelta, scopes: List[str] = []) -> str:
@@ -26,26 +21,30 @@ class TokenManager:
             "sub": str(subject),
             "exp": expire,
             "iat": datetime.now(timezone.utc),
-            "jti": str(uuid.uuid4()),  # Unique ID for revocation
+            "jti": str(uuid.uuid4()),
             "scopes": scopes
         }
-        return jwt.encode(to_encode, self.settings.secret_key, algorithm=self.settings.algorithm)
+        return jwt.encode(to_encode, self.settings.SECRET_KEY, algorithm=self.settings.ALGORITHM)
 
     def generate_auth_tokens(self, user_id: str, scopes: List[str] = []) -> TokenPair:
         access = self.create_token(
             subject=user_id, 
-            expires_delta=timedelta(minutes=self.settings.access_token_expire_minutes),
+            expires_delta=timedelta(minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             scopes=scopes
         )
         refresh = self.create_token(
             subject=user_id, 
-            expires_delta=timedelta(days=self.settings.refresh_token_expire_days)
+            expires_delta=timedelta(days=self.settings.REFRESH_TOKEN_EXPIRE_DAYS)
         )
         return TokenPair(access_token=access, refresh_token=refresh)
 
-    def decode_token(self, token: str) -> Dict:
+    def decode_token(self, token: str) -> Dict[str, Any]:
         try:
-            return jwt.decode(token, self.settings.secret_key, algorithms=[self.settings.algorithm])
+            return jwt.decode(
+                token, 
+                self.settings.SECRET_KEY, 
+                algorithms=[self.settings.ALGORITHM]
+            )
         except jwt.ExpiredSignatureError:
             raise TokenExpiredError("Token has expired.")
         except JWTError:
